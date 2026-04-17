@@ -1,0 +1,100 @@
+.TH TRAY 1 "2026-04-18" "systray 0.1.0" "User Commands"
+.SH NAME
+tray \- system tray helper for shell scripts
+.SH SYNOPSIS
+.B tray
+.I command
+[options]
+.SH DESCRIPTION
+tray is a small Rust daemon and CLI for showing tray icons from shell scripts and other automation.
+
+The daemon is started on demand by
+.B tray show
+and exits automatically when the last tray item is removed.
+.B tray list
+and
+.B tray hide
+do not start the daemon if it is not already running.
+.SH COMMANDS
+.TP
+.B show
+Create or update a tray item.
+At least one of
+.B --icon
+or
+.B --tooltip
+is required.
+.TP
+.B hide
+Remove a tray item by id.
+If the id does not exist, the command fails with a non-zero exit code.
+.TP
+.B list
+Print the ids of active tray items, one per line.
+If the daemon is not running, this returns successfully with no output.
+.TP
+.B daemon
+Run the background daemon directly.
+.SH OPTIONS
+.TP
+.BR --id " " ID
+Item id used to create, update, or hide a tray entry.
+.TP
+.BR --icon " " PATH
+Path to a PNG or SVG icon file.
+.TP
+.BR --tooltip " " TEXT
+Tooltip text for the tray item.
+.TP
+.BR --on-click " " CMD
+Shell command to run when the item is activated.
+.TP
+.BR --pid " " PID
+PID associated with the tray item. The daemon can hide items when the process exits.
+.SH ENVIRONMENT
+.TP
+.B RUST_LOG
+Controls log level. Defaults to
+.B error
+when unset.
+.TP
+.B XDG_RUNTIME_DIR
+Used to locate the Unix socket for the client and daemon.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B non-zero
+An error occurred, such as an invalid command, missing tray item, or daemon startup failure.
+.SH EXAMPLES
+.TP
+Show a tooltip-only tray entry:
+.EX
+tray show --id example --tooltip "Example item"
+.EE
+.TP
+Show a tray entry with an icon:
+.EX
+tray show --id example --icon /path/to/icon.png --tooltip "Example item"
+.EE
+.TP
+Remove an item:
+.EX
+tray hide --id example
+.EE
+.TP
+List active items:
+.EX
+tray list
+.EE
+.SH NOTES
+The
+.B on_click
+command is executed through
+.BR sh (1)
+with
+.BR -lc ,
+so it should be treated as shell code.
+.SH SEE ALSO
+.BR sh (1)
