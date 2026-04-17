@@ -5,12 +5,12 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="System tray helper for shell scripts"
 arch=('x86_64')
-url="local checkout"
+url="https://github.com/anisthdev/systray"
 license=('custom')
 depends=('dbus')
 makedepends=('cargo' 'rust')
 provides=('tray')
-source=("$pkgname::git+file://$PWD")
+source=("git+https://github.com/anisthdev/systray.git")
 sha256sums=('SKIP')
 
 build() {
