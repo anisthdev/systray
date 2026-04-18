@@ -9,6 +9,7 @@ The binary speaks to a small background daemon over a Unix socket. In normal use
 - `tray list` prints active item ids
 - `tray run` shows an item while a command is running
 - `tray daemon` runs the background daemon explicitly
+- `tray -v` / `tray --version` prints the CLI version
 
 ## Features
 
@@ -94,6 +95,12 @@ Run a command with a temporary tray item:
 tray run --icon media-record --id app -- sleep 50
 ```
 
+Run a command and show elapsed time in the tray tooltip:
+
+```bash
+tray run --icon media-record --id app --duration -- sleep 50
+```
+
 ## Behavior Notes
 
 - `tray show` requires at least one of `--icon` or `--tooltip`
@@ -101,6 +108,8 @@ tray run --icon media-record --id app -- sleep 50
 - `tray list` does not start the daemon; when no daemon is running it exits successfully with no output
 - `tray run` returns the same exit status as the wrapped command
 - `tray run` forwards `SIGINT` and `SIGTERM` to the wrapped command and removes the tray item after exit
+- `tray run --duration` updates elapsed time once per second (`HH:MM:SS`)
+- when `tray run --duration` is used without `--tooltip`, the timer becomes the hover title; with `--tooltip`, the timer appears below the tooltip text
 - `--on-click` is executed through `sh -lc`, so it must be treated as shell code
 - The socket is created under `$XDG_RUNTIME_DIR` when available, otherwise under `/tmp/tray-<uid>/tray.sock`
 

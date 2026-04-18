@@ -1,10 +1,13 @@
-.TH TRAY 1 "2026-04-18" "systray 0.1.0" "User Commands"
+.TH TRAY 1 "2026-04-18" "systray 0.2.1" "User Commands"
 .SH NAME
 tray \- system tray helper for shell scripts
 .SH SYNOPSIS
 .B tray
+.RB [ -v | --version ]
+.br
+.B tray
 .I command
-[options]
+.RI [ options ]
 .SH DESCRIPTION
 tray is a small Rust daemon and CLI for showing Status Notifier tray items from shell scripts and other automation.
 
@@ -42,6 +45,9 @@ The command is passed after
 Run the background daemon directly.
 .SH OPTIONS
 .TP
+.BR -v ", " --version
+Print the CLI version and exit.
+.TP
 .BR --id " " ID
 Item id used to create, update, or hide a tray entry.
 .TP
@@ -53,6 +59,11 @@ Tooltip text for the tray item.
 .TP
 .BR --on-click " " CMD
 Shell command to run when the item is activated.
+.TP
+.BR --duration
+For
+.B run
+, update the tray tooltip every second with elapsed time.
 .TP
 .BR --pid " " PID
 PID associated with the tray item. The daemon can hide items when the process exits.
@@ -115,6 +126,11 @@ Run a command with a temporary tray icon:
 .EX
 tray run --icon media-record --id app -- sleep 50
 .EE
+.TP
+Run a command and show elapsed time in tooltip:
+.EX
+tray run --icon media-record --id app --duration -- sleep 50
+.EE
 .SH NOTES
 The
 .B --on-click
@@ -130,5 +146,13 @@ subcommand forwards
 and
 .B SIGTERM
 to the wrapped command.
+With
+.B --duration
+, elapsed time is shown in
+.B HH:MM:SS
+format.
+If no
+.B --tooltip
+is given, the timer becomes the hover title; otherwise it appears below the tooltip text.
 .SH SEE ALSO
 .BR sh (1)

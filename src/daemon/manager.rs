@@ -4,19 +4,16 @@ use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use zbus::Connection;
 
 pub struct Manager {
-    _conn: Connection,
-    items: Mutex<HashMap<String, SniItem>>,
+    items: Mutex<HashMap<String, Arc<SniItem>>>,
     counter: AtomicUsize,
     on_empty: Mutex<Option<Box<dyn Fn() + Send>>>,
 }
 
 impl Manager {
-    pub async fn new(conn: Connection, on_empty: Box<dyn Fn() + Send>) -> Arc<Self> {
+    pub async fn new(on_empty: Box<dyn Fn() + Send>) -> Arc<Self> {
         Arc::new(Self {
-            _conn: conn,
             items: Mutex::new(HashMap::new()),
             counter: AtomicUsize::new(0),
             on_empty: Mutex::new(Some(on_empty)),
@@ -30,9 +27,13 @@ impl Manager {
         };
 
         {
-            let mut items = self.items.lock();
-            if let Some(item) = items.get_mut(id) {
-                if let Err(e) = item.update(&req) {
+            let item = {
+                let items = self.items.lock();
+                items.get(id).cloned()
+            };
+
+            if let Some(item) = item {
+                if let Err(e) = item.update(&req).await {
                     return Response::err(e.to_string());
                 }
                 return Response::ok();
@@ -40,16 +41,15 @@ impl Manager {
         }
 
         let counter = self.counter.fetch_add(1, Ordering::Relaxed);
-        let pid = std::process::id() as i32;
-        let bus_name = format!("org.kde.StatusNotifierItem-{}-{}", pid, counter);
+        let object_path = format!("/StatusNotifierItem/_{}", counter);
 
         let sni_item = match SniItem::new(
-            &self._conn,
-            bus_name,
             id.clone(),
+            object_path,
             req.icon.as_deref().unwrap_or(""),
             req.tooltip.as_deref().unwrap_or(""),
             req.on_click.as_deref().unwrap_or(""),
+            req.show_duration.unwrap_or(false),
         )
         .await
         {
@@ -57,7 +57,7 @@ impl Manager {
             Err(e) => return Response::err(e.to_string()),
         };
 
-        self.items.lock().insert(id.clone(), sni_item);
+        self.items.lock().insert(id.clone(), Arc::new(sni_item));
 
         log::info!("show item: {}", id);
         Response::ok()
@@ -142,6 +142,17 @@ impl Manager {
             }
         }
         pids
+    }
+
+    pub async fn tick_durations(&self) {
+        let items = {
+            let items = self.items.lock();
+            items.values().cloned().collect::<Vec<_>>()
+        };
+
+        for item in items {
+            let _ = item.tick_duration().await;
+        }
     }
 
     pub async fn dispatch(&self, req: Request) -> Response {

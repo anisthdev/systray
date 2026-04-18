@@ -17,6 +17,8 @@ pub struct Request {
     pub on_click: Option<String>,
     #[serde(rename = "pid")]
     pub pid: Option<i32>,
+    #[serde(rename = "show_duration")]
+    pub show_duration: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

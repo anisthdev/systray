@@ -22,8 +22,16 @@ enum ConnectMode {
 
 #[derive(Parser)]
 #[command(name = "tray")]
+#[command(version, disable_version_flag = true)]
 #[command(about = "System tray helper for shell scripts", long_about = None)]
 struct Cli {
+    #[arg(
+        short = 'v',
+        long = "version",
+        action = clap::ArgAction::Version,
+        help = "Print version"
+    )]
+    _version: Option<bool>,
     #[command(subcommand)]
     command: Commands,
 }
@@ -54,6 +62,8 @@ enum Commands {
         icon: Option<String>,
         #[arg(long)]
         tooltip: Option<String>,
+        #[arg(long)]
+        duration: bool,
         #[arg(long)]
         on_click: Option<String>,
         #[arg(
@@ -89,6 +99,7 @@ pub fn run() -> Result<()> {
                 tooltip,
                 on_click,
                 pid,
+                show_duration: None,
             }, ConnectMode::StartIfMissing)?;
         }
         Commands::Hide { id } => {
@@ -99,6 +110,7 @@ pub fn run() -> Result<()> {
                 tooltip: None,
                 on_click: None,
                 pid: None,
+                show_duration: None,
             }, ConnectMode::NoStart)?;
 
             if !resp.ok {
@@ -113,6 +125,7 @@ pub fn run() -> Result<()> {
                 tooltip: None,
                 on_click: None,
                 pid: None,
+                show_duration: None,
             }, ConnectMode::NoStart)?;
 
             if resp.ok {
@@ -129,13 +142,14 @@ pub fn run() -> Result<()> {
             id,
             icon,
             tooltip,
+            duration,
             on_click,
             command,
         } => {
-            if icon.is_none() && tooltip.is_none() {
+            if icon.is_none() && tooltip.is_none() && !duration {
                 return Err(anyhow!("at least one of --icon or --tooltip is required"));
             }
-            let code = run_with_tray(id, icon, tooltip, on_click, command)?;
+            let code = run_with_tray(id, icon, tooltip, duration, on_click, command)?;
             std::process::exit(code);
         }
         Commands::Daemon => {
@@ -150,6 +164,7 @@ fn run_with_tray(
     id: String,
     icon: Option<String>,
     tooltip: Option<String>,
+    duration: bool,
     on_click: Option<String>,
     command: Vec<String>,
 ) -> Result<i32> {
@@ -163,6 +178,7 @@ fn run_with_tray(
             on_click,
             // If tray exits unexpectedly, the watcher can still clean this item up.
             pid: Some(self_pid),
+            show_duration: Some(duration),
         },
         ConnectMode::StartIfMissing,
     )?;
@@ -222,6 +238,7 @@ fn hide_best_effort(id: &str) {
             tooltip: None,
             on_click: None,
             pid: None,
+            show_duration: None,
         },
         ConnectMode::NoStart,
     );

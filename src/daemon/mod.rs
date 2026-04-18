@@ -10,7 +10,6 @@ use anyhow::Result;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::Notify;
-use zbus::Connection;
 
 pub fn run() -> Result<()> {
     tokio::runtime::Builder::new_current_thread()
@@ -20,8 +19,6 @@ pub fn run() -> Result<()> {
 }
 
 async fn async_run() -> Result<()> {
-    let conn = Connection::session().await?;
-
     let stop = Arc::new(AtomicBool::new(false));
     let shutdown = Arc::new(Notify::new());
     let stop_clone = stop.clone();
@@ -33,7 +30,7 @@ async fn async_run() -> Result<()> {
         shutdown_clone.notify_one();
     });
 
-    let mgr = Manager::new(conn, on_empty).await;
+    let mgr = Manager::new(on_empty).await;
 
     let mgr_clone = mgr.clone();
     let stop_clone2 = stop.clone();
