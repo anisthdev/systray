@@ -11,7 +11,7 @@ depends=('dbus')
 makedepends=('cargo' 'rust')
 provides=('tray')
 source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$pkgname-$pkgver.tar.gz")
-sha256sums=('c6c65b639bde824e879ce425acffb2a23ec695bafbc9a05b94742e15bf458d4a')
+sha256sums=('618988f12a41320e00919a7c71ebf69ae4851526fd72508baaed758b53333aad')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
