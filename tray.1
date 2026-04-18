@@ -33,6 +33,11 @@ If the id does not exist, the command fails with a non-zero exit code.
 Print the ids of active tray items, one per line.
 If the daemon is not running, this returns successfully with no output.
 .TP
+.B run
+Show a tray item while executing a command, then hide the item when the command exits.
+The command is passed after
+.B -- .
+.TP
 .B daemon
 Run the background daemon directly.
 .SH OPTIONS
@@ -77,7 +82,8 @@ is unavailable.
 Success.
 .TP
 .B non-zero
-An error occurred, such as an invalid command, missing tray item, or daemon startup failure.
+An error occurred, such as an invalid command, missing tray item, daemon startup failure, or command failure in
+.B run .
 .SH EXAMPLES
 .TP
 Show a tooltip-only tray entry:
@@ -104,6 +110,11 @@ List active items:
 .EX
 tray list
 .EE
+.TP
+Run a command with a temporary tray icon:
+.EX
+tray run --icon media-record --id app -- sleep 50
+.EE
 .SH NOTES
 The
 .B --on-click
@@ -112,5 +123,12 @@ command is executed through
 with
 .BR -lc ,
 so it should be treated as shell code.
+The
+.B run
+subcommand forwards
+.B SIGINT
+and
+.B SIGTERM
+to the wrapped command.
 .SH SEE ALSO
 .BR sh (1)

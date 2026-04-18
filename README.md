@@ -7,6 +7,7 @@ The binary speaks to a small background daemon over a Unix socket. In normal use
 - `tray show` creates or updates an item
 - `tray hide` removes an item by id
 - `tray list` prints active item ids
+- `tray run` shows an item while a command is running
 - `tray daemon` runs the background daemon explicitly
 
 ## Features
@@ -87,11 +88,19 @@ Run the daemon explicitly:
 tray daemon
 ```
 
+Run a command with a temporary tray item:
+
+```bash
+tray run --icon media-record --id app -- sleep 50
+```
+
 ## Behavior Notes
 
 - `tray show` requires at least one of `--icon` or `--tooltip`
 - `tray hide` returns a non-zero exit status if the id does not exist
 - `tray list` does not start the daemon; when no daemon is running it exits successfully with no output
+- `tray run` returns the same exit status as the wrapped command
+- `tray run` forwards `SIGINT` and `SIGTERM` to the wrapped command and removes the tray item after exit
 - `--on-click` is executed through `sh -lc`, so it must be treated as shell code
 - The socket is created under `$XDG_RUNTIME_DIR` when available, otherwise under `/tmp/tray-<uid>/tray.sock`
 

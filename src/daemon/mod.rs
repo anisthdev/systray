@@ -13,7 +13,7 @@ use tokio::sync::Notify;
 use zbus::Connection;
 
 pub fn run() -> Result<()> {
-    tokio::runtime::Builder::new_multi_thread()
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
         .block_on(async_run())
