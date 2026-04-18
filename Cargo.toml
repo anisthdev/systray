@@ -2,7 +2,18 @@
 name = "systray"
 version = "0.1.0"
 edition = "2021"
+authors = ["Asif Arbaj <asifarbaj@gmail.com>"]
+description = "System tray helper and daemon for shell scripts and lightweight automation"
+readme = "README.md"
 license = "MIT"
+repository = "https://github.com/anisthdev/systray"
+homepage = "https://github.com/anisthdev/systray"
+keywords = ["tray", "status-notifier", "dbus", "linux", "automation"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "tray"
+path = "src/main.rs"
 
 [dependencies]
 zbus = "4"

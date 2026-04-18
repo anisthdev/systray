@@ -6,7 +6,7 @@ tray \- system tray helper for shell scripts
 .I command
 [options]
 .SH DESCRIPTION
-tray is a small Rust daemon and CLI for showing tray icons from shell scripts and other automation.
+tray is a small Rust daemon and CLI for showing Status Notifier tray items from shell scripts and other automation.
 
 The daemon is started on demand by
 .B tray show
@@ -60,6 +60,17 @@ when unset.
 .TP
 .B XDG_RUNTIME_DIR
 Used to locate the Unix socket for the client and daemon.
+.SH FILES
+.TP
+.I $XDG_RUNTIME_DIR/tray.sock
+Default socket path when
+.B XDG_RUNTIME_DIR
+is set.
+.TP
+.I /tmp/tray-<uid>/tray.sock
+Fallback socket path when
+.B XDG_RUNTIME_DIR
+is unavailable.
 .SH EXIT STATUS
 .TP
 .B 0
@@ -79,6 +90,11 @@ Show a tray entry with an icon:
 tray show --id example --icon /path/to/icon.png --tooltip "Example item"
 .EE
 .TP
+Show a tray entry bound to the current shell process:
+.EX
+tray show --id shell --tooltip "Shell task running" --pid "$$"
+.EE
+.TP
 Remove an item:
 .EX
 tray hide --id example
@@ -90,7 +106,7 @@ tray list
 .EE
 .SH NOTES
 The
-.B on_click
+.B --on-click
 command is executed through
 .BR sh (1)
 with
