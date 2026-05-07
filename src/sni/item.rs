@@ -104,21 +104,17 @@ impl SniItem {
             .at(object_path.as_str(), StatusNotifierItem { item: item.clone() })
             .await?;
 
-        let _ = conn
-            .call_method(
-                Some("org.kde.StatusNotifierWatcher"),
-                "/StatusNotifierWatcher",
-                Some("org.kde.StatusNotifierWatcher"),
-                "RegisterStatusNotifierItem",
-                &(object_path.as_str()),
-            )
-            .await;
-
-        Ok(Self {
+        let item = Self {
             conn,
             object_path,
             item,
-        })
+        };
+
+        if let Err(e) = item.register_with_watcher().await {
+            log::warn!("tray registration failed for {}: {}", item.item.read().id, e);
+        }
+
+        Ok(item)
     }
 
     pub fn item(&self) -> Arc<parking_lot::RwLock<Item>> {
@@ -128,6 +124,19 @@ impl SniItem {
     pub async fn update(&self, req: &Request) -> Result<()> {
         self.item.write().update(req)?;
         self.emit_tooltip_changed().await?;
+        Ok(())
+    }
+
+    pub async fn register_with_watcher(&self) -> Result<()> {
+        self.conn
+            .call_method(
+                Some("org.kde.StatusNotifierWatcher"),
+                "/StatusNotifierWatcher",
+                Some("org.kde.StatusNotifierWatcher"),
+                "RegisterStatusNotifierItem",
+                &(self.object_path.as_str()),
+            )
+            .await?;
         Ok(())
     }
 

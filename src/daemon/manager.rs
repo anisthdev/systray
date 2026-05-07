@@ -155,6 +155,28 @@ impl Manager {
         }
     }
 
+    pub async fn re_register_all(&self) {
+        let items = {
+            let items = self.items.lock();
+            items.values().cloned().collect::<Vec<_>>()
+        };
+
+        for item in items {
+            if let Err(e) = item.register_with_watcher().await {
+                log::warn!(
+                    "tray re-registration failed for {}: {}",
+                    item.item().read().id,
+                    e
+                );
+            }
+        }
+    }
+
+    pub fn has_items(&self) -> bool {
+        let items = self.items.lock();
+        !items.is_empty()
+    }
+
     pub async fn dispatch(&self, req: Request) -> Response {
         match req.cmd.as_str() {
             CMD_SHOW => self.show(req).await,
