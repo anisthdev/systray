@@ -60,6 +60,21 @@ Tooltip text for the tray item.
 .BR --on-click " " CMD
 Shell command to run when the item is activated.
 .TP
+.BR --menu " " LABEL=CMD
+Add a row to the item's right-click menu, which runs
+.I CMD
+through
+.B sh -lc
+when chosen. Repeat it for more rows; a value of
+.B -
+adds a separator. The label ends at the first
+.BR = .
+A
+.B show
+with
+.B --menu
+replaces the whole menu; one without leaves it as it is.
+.TP
 .BR --duration
 For
 .B run

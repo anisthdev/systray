@@ -11,7 +11,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::daemon::socket_path;
-use crate::protocol::{Request, Response, CMD_HIDE, CMD_LIST, CMD_SHOW};
+use crate::protocol::{MenuEntry, Request, Response, CMD_HIDE, CMD_LIST, CMD_SHOW};
 use signal_hook::consts::signal::{SIGINT, SIGTERM};
 use signal_hook::flag;
 
@@ -47,6 +47,9 @@ enum Commands {
         tooltip: Option<String>,
         #[arg(long)]
         on_click: Option<String>,
+        /// Context menu row, repeatable: LABEL=COMMAND, or - for a separator
+        #[arg(long = "menu", value_name = "LABEL=COMMAND", value_parser = MenuEntry::parse)]
+        menu: Vec<MenuEntry>,
         #[arg(long)]
         pid: Option<i32>,
     },
@@ -66,6 +69,9 @@ enum Commands {
         duration: bool,
         #[arg(long)]
         on_click: Option<String>,
+        /// Context menu row, repeatable: LABEL=COMMAND, or - for a separator
+        #[arg(long = "menu", value_name = "LABEL=COMMAND", value_parser = MenuEntry::parse)]
+        menu: Vec<MenuEntry>,
         #[arg(
             required = true,
             num_args = 1..,
@@ -86,6 +92,7 @@ pub fn run() -> Result<()> {
             icon,
             tooltip,
             on_click,
+            menu,
             pid,
         } => {
             if icon.is_none() && tooltip.is_none() {
@@ -100,6 +107,7 @@ pub fn run() -> Result<()> {
                 on_click,
                 pid,
                 show_duration: None,
+                menu: (!menu.is_empty()).then_some(menu),
             }, ConnectMode::StartIfMissing)?;
         }
         Commands::Hide { id } => {
@@ -111,6 +119,7 @@ pub fn run() -> Result<()> {
                 on_click: None,
                 pid: None,
                 show_duration: None,
+                menu: None,
             }, ConnectMode::NoStart)?;
 
             if !resp.ok {
@@ -126,6 +135,7 @@ pub fn run() -> Result<()> {
                 on_click: None,
                 pid: None,
                 show_duration: None,
+                menu: None,
             }, ConnectMode::NoStart)?;
 
             if resp.ok {
@@ -144,12 +154,13 @@ pub fn run() -> Result<()> {
             tooltip,
             duration,
             on_click,
+            menu,
             command,
         } => {
             if icon.is_none() && tooltip.is_none() && !duration {
                 return Err(anyhow!("at least one of --icon or --tooltip is required"));
             }
-            let code = run_with_tray(id, icon, tooltip, duration, on_click, command)?;
+            let code = run_with_tray(id, icon, tooltip, duration, on_click, menu, command)?;
             std::process::exit(code);
         }
         Commands::Daemon => {
@@ -166,6 +177,7 @@ fn run_with_tray(
     tooltip: Option<String>,
     duration: bool,
     on_click: Option<String>,
+    menu: Vec<MenuEntry>,
     command: Vec<String>,
 ) -> Result<i32> {
     let self_pid = std::process::id() as i32;
@@ -179,6 +191,7 @@ fn run_with_tray(
             // If tray exits unexpectedly, the watcher can still clean this item up.
             pid: Some(self_pid),
             show_duration: Some(duration),
+            menu: (!menu.is_empty()).then_some(menu),
         },
         ConnectMode::StartIfMissing,
     )?;
@@ -239,6 +252,7 @@ fn hide_best_effort(id: &str) {
             on_click: None,
             pid: None,
             show_duration: None,
+            menu: None,
         },
         ConnectMode::NoStart,
     );

@@ -50,6 +50,7 @@ impl Manager {
             req.tooltip.as_deref().unwrap_or(""),
             req.on_click.as_deref().unwrap_or(""),
             req.show_duration.unwrap_or(false),
+            req.menu.clone().unwrap_or_default(),
         )
         .await
         {

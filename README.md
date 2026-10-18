@@ -18,6 +18,7 @@ The binary speaks to a small background daemon over a Unix socket. In normal use
 - Accepts PNG and SVG icons
 - Can associate items with a PID and remove them automatically when that process exits
 - Supports click handlers via shell commands
+- Right-click menus (`--menu`), served over `com.canonical.dbusmenu`
 
 ## Requirements
 
@@ -63,6 +64,19 @@ tray show \
   --icon /path/to/icon.svg \
   --tooltip "Sync in progress" \
   --on-click 'notify-send "sync clicked"'
+```
+
+Add a right-click menu; each `--menu` is a row, `-` a separator:
+
+```bash
+tray show \
+  --id sync \
+  --icon /path/to/icon.svg \
+  --tooltip "Sync" \
+  --on-click 'notify-send "sync clicked"' \
+  --menu 'Sync now=sync-now' \
+  --menu - \
+  --menu 'Open log=xdg-open ~/sync.log'
 ```
 
 Attach an item to an existing process:
@@ -111,6 +125,8 @@ tray run --icon media-record --id app --duration -- sleep 50
 - `tray run --duration` updates elapsed time once per second (`HH:MM:SS`)
 - when `tray run --duration` is used without `--tooltip`, the timer becomes the hover title; with `--tooltip`, the timer appears below the tooltip text
 - `--on-click` is executed through `sh -lc`, so it must be treated as shell code
+- `--menu LABEL=COMMAND` adds a row to the item's right-click menu; it can be repeated, and `--menu -` adds a separator. The label ends at the first `=`, and the command runs through `sh -lc` like `--on-click`
+- a `tray show` with `--menu` replaces the whole menu; one without leaves the current menu as it is
 - The socket is created under `$XDG_RUNTIME_DIR` when available, otherwise under `/tmp/tray-<uid>/tray.sock`
 
 ## Man Page

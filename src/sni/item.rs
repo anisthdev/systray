@@ -1,4 +1,5 @@
-use crate::protocol::Request;
+use crate::protocol::{MenuEntry, Request};
+use crate::sni::menu::{run_shell, DbusMenu};
 use crate::sni::icon::resolve_icon;
 use anyhow::Result;
 use std::path::Path;
@@ -16,6 +17,9 @@ pub struct Item {
     pub pid: Option<i32>,
     pub show_duration: bool,
     pub started_at: Option<Instant>,
+    pub menu: Vec<MenuEntry>,
+    /// Bumped on every menu change, as dbusmenu's layout revision.
+    pub menu_revision: u32,
 }
 
 impl Item {
@@ -30,6 +34,8 @@ impl Item {
             pid: None,
             show_duration: false,
             started_at: None,
+            menu: Vec::new(),
+            menu_revision: 1,
         })
     }
 
@@ -53,6 +59,12 @@ impl Item {
                 self.started_at = Some(Instant::now());
             }
         }
+        if let Some(ref menu) = req.menu {
+            if *menu != self.menu {
+                self.menu = menu.clone();
+                self.menu_revision += 1;
+            }
+        }
         Ok(())
     }
 
@@ -72,6 +84,8 @@ impl Clone for Item {
             pid: self.pid,
             show_duration: self.show_duration,
             started_at: self.started_at,
+            menu: self.menu.clone(),
+            menu_revision: self.menu_revision,
         }
     }
 }
@@ -90,6 +104,7 @@ impl SniItem {
         tooltip: &str,
         on_click: &str,
         show_duration: bool,
+        menu: Vec<MenuEntry>,
     ) -> Result<Self> {
         let conn = Connection::session().await?;
         let item = Arc::new(parking_lot::RwLock::new(Item::new(
@@ -99,9 +114,18 @@ impl SniItem {
             item.write().show_duration = true;
             item.write().started_at = Some(Instant::now());
         }
+        item.write().menu = menu;
+        let menu_path: OwnedObjectPath = format!("{}/Menu", object_path).try_into()?;
         let object_path: OwnedObjectPath = object_path.try_into()?;
         conn.object_server()
-            .at(object_path.as_str(), StatusNotifierItem { item: item.clone() })
+            .at(
+                object_path.as_str(),
+                StatusNotifierItem { item: item.clone(), menu_path: menu_path.clone() },
+            )
+            .await?;
+        // Served even while empty, so a menu given later needs no new path
+        conn.object_server()
+            .at(menu_path.as_str(), DbusMenu { item: item.clone() })
             .await?;
 
         let item = Self {
@@ -122,8 +146,31 @@ impl SniItem {
     }
 
     pub async fn update(&self, req: &Request) -> Result<()> {
+        let (had_menu, revision) = {
+            let item = self.item.read();
+            (!item.menu.is_empty(), item.menu_revision)
+        };
         self.item.write().update(req)?;
         self.emit_tooltip_changed().await?;
+
+        let (has_menu, new_revision) = {
+            let item = self.item.read();
+            (!item.menu.is_empty(), item.menu_revision)
+        };
+        if new_revision != revision {
+            self.emit_layout_updated(new_revision).await?;
+        }
+        // Hosts read the Menu property once, at registration
+        if has_menu != had_menu {
+            self.register_with_watcher().await?;
+        }
+        Ok(())
+    }
+
+    async fn emit_layout_updated(&self, revision: u32) -> Result<()> {
+        let path = format!("{}/Menu", self.object_path.as_str());
+        let iface_ref = self.conn.object_server().interface::<_, DbusMenu>(path.as_str()).await?;
+        DbusMenu::layout_updated(iface_ref.signal_context(), revision, 0).await?;
         Ok(())
     }
 
@@ -178,11 +225,17 @@ impl SniItem {
             .object_server()
             .remove::<StatusNotifierItem, _>(self.object_path.clone())
             .await;
+        let _ = self
+            .conn
+            .object_server()
+            .remove::<DbusMenu, _>(format!("{}/Menu", self.object_path.as_str()).as_str())
+            .await;
     }
 }
 
 struct StatusNotifierItem {
     item: Arc<parking_lot::RwLock<Item>>,
+    menu_path: OwnedObjectPath,
 }
 
 #[interface(interface = "org.kde.StatusNotifierItem")]
@@ -192,13 +245,7 @@ impl StatusNotifierItem {
 
     fn activate(&self, _x: i32, _y: i32) {
         let on_click = self.item.read().on_click.clone();
-        if on_click.is_empty() {
-            return;
-        }
-        let _ = std::process::Command::new("sh")
-            .arg("-lc")
-            .arg(on_click)
-            .spawn();
+        run_shell(&on_click);
     }
 
     fn context_menu(&self, _x: i32, _y: i32) {}
@@ -260,7 +307,11 @@ impl StatusNotifierItem {
 
     #[zbus(property)]
     fn menu(&self) -> OwnedObjectPath {
-        "/NO_DBUSMENU".try_into().expect("valid object path")
+        if self.item.read().menu.is_empty() {
+            "/NO_DBUSMENU".try_into().expect("valid object path")
+        } else {
+            self.menu_path.clone()
+        }
     }
 
     #[zbus(property)]
